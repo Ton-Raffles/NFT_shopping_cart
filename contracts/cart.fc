@@ -1,20 +1,26 @@
 #include "imports/stdlib.fc";
 #include "constants.fc";
 
-;; data globals
+global cell nfts;
+global slice owner_address;
 
 global int context::op;
 global int context::query_id;
 global slice context::sender;
 
+(slice, slice, int) dict_get_next?(cell dict, int key_len, slice pivot) asm(pivot dict key_len -> 1 0 2) "DICTGETNEXT" "NULLSWAPIFNOT2";
+(slice, slice, int) dict_get_min?(cell dict, int key_len) asm (-> 1 0 2) "DICTMIN" "NULLSWAPIFNOT2";
+
 () load_data() impure {
     slice ds = get_data().begin_parse();
-    
+    nfts = ds~load_dict();
+    owner_address = ds~load_msg_addr();
 }
 
 () save_data() impure {
     set_data(begin_cell()
-        
+        .store_dict(nfts)
+        .store_slice(owner_address)
     .end_cell());
 }
 
@@ -29,8 +35,46 @@ global slice context::sender;
 
     load_data();
 
-    if (context::op == ) {
+    if (context::op == op::buy) {
+        throw_unless(error::incorrect_sender_address, equal_slices(context::sender, owner_address));
 
+        (slice key, slice val, int flag) = nfts.dict_get_min?(267);
+        while (flag) {
+            cell msg = begin_cell()
+                .store_uint(0x18, 6)
+                .store_slice(key)
+                .store_slice(val)
+                .store_uint(0, 107)
+                .store_uint(2, 32)
+                .store_uint(context::query_id, 64)
+            .end_cell();
+            
+            send_raw_message(msg, 1);
+
+            (key, val, flag) = nfts.dict_get_next?(267, key);
+        }
+    } elseif (context::op == op::ownership_assigned) {
+        cell msg = begin_cell()
+            .store_uint(0x18, 6)
+            .store_slice(context::sender)
+            .store_coins(10000000)
+            .store_uint(0, 107)
+            .store_uint(op::transfer, 32)
+            .store_uint(context::query_id, 64)
+            .store_slice(owner_address)
+            .store_uint(0, 4)
+        .end_cell();
+            
+        send_raw_message(msg, 0);
+    } elseif (context::op == op::bounced) {
+        cell msg = begin_cell()
+            .store_uint(0x18, 6)
+            .store_slice(owner_address)
+            .store_coins(0)
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 2)
+        .end_cell();
+
+        send_raw_message(msg, 64);
     }
 
     else {

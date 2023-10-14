@@ -1,1 +1,3 @@
-_ = CartStorage;
+_ nfts:(HashmapE 267 Coins) owner_address:MsgAddressInt = CartStorage;
+
+buy#402eff0b query_id:uint64 = InternalMsgBody;
