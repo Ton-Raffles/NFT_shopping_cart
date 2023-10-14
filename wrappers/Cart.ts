@@ -1,9 +1,26 @@
-import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode } from 'ton-core';
+import {
+    Address,
+    beginCell,
+    Cell,
+    Contract,
+    contractAddress,
+    ContractProvider,
+    Dictionary,
+    Sender,
+    SendMode,
+} from 'ton-core';
 
-export type CartConfig = {};
+export type CartConfig = {
+    nfts: Dictionary<Address, bigint>;
+    ownerAddress: Address;
+};
+
+export const Opcodes = {
+    buy: 0x402eff0b,
+};
 
 export function cartConfigToCell(config: CartConfig): Cell {
-    return beginCell().endCell();
+    return beginCell().storeDict(config.nfts).storeAddress(config.ownerAddress).endCell();
 }
 
 export class Cart implements Contract {
@@ -19,11 +36,18 @@ export class Cart implements Contract {
         return new Cart(contractAddress(workchain, init), init);
     }
 
-    async sendDeploy(provider: ContractProvider, via: Sender, value: bigint) {
+    async sendBuy(
+        provider: ContractProvider,
+        via: Sender,
+        value: bigint,
+        opts: {
+            queryId: bigint;
+        }
+    ) {
         await provider.internal(via, {
             value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell().endCell(),
+            body: beginCell().storeUint(Opcodes.buy, 32).storeUint(opts.queryId, 64).endCell(),
         });
     }
 }
