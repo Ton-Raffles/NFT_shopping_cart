@@ -19,6 +19,8 @@
   For example, tuple `(1, (2, (3, null)))` represents list `[1, 2, 3]`. Elements of a list can be of different types.
 -}
 
+int builder_null?(builder) asm "ISNULL";
+
 ;;; Adds an element to the beginning of lisp-style list.
 forall X -> tuple cons(X head, tuple tail) asm "CONS";
 
