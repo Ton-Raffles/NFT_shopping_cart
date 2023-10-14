@@ -23,9 +23,9 @@ export class NFTItem implements Contract {
                 .storeUint(0x5fcc3d14, 32)
                 .storeUint(0, 64)
                 .storeAddress(recipient)
-                .storeAddress(await this.getOwner(provider))
+                .storeAddress(undefined)
                 .storeUint(0, 1)
-                .storeCoins(toNano('0.1'))
+                .storeCoins(toNano('0.02'))
                 .storeUint(0, 1)
                 .endCell(),
         });
