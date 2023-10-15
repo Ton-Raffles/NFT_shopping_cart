@@ -1,5 +1,5 @@
 import { Blockchain, SandboxContract, Treasury, TreasuryContract, printTransactionFees } from '@ton-community/sandbox';
-import { Cell, Dictionary, beginCell, toNano } from 'ton-core';
+import { Address, Cell, Dictionary, beginCell, toNano } from 'ton-core';
 import { Cart } from '../wrappers/Cart';
 import '@ton-community/test-utils';
 import { compile } from '@ton-community/blueprint';
@@ -89,6 +89,11 @@ describe('Cart', () => {
             success: true,
             outMessagesCount: 1,
         });
+        expect(result.transactions).toHaveTransaction({
+            from: cart.address,
+            to: deployer.address,
+        });
+        expect((await blockchain.getContract(cart.address)).accountState?.type).toEqual('uninit');
         expect(await items[0].getOwner()).toEqualAddress(deployer.address);
     });
 
@@ -106,6 +111,11 @@ describe('Cart', () => {
             success: true,
             outMessagesCount: 10,
         });
+        expect(result.transactions).toHaveTransaction({
+            from: cart.address,
+            to: deployer.address,
+        });
+        expect((await blockchain.getContract(cart.address)).accountState?.type).toEqual('uninit');
         for (let i = 0; i < 10; i++) {
             expect(await items[i].getOwner()).toEqualAddress(deployer.address);
         }
@@ -125,6 +135,11 @@ describe('Cart', () => {
             success: true,
             outMessagesCount: 100,
         });
+        expect(result.transactions).toHaveTransaction({
+            from: cart.address,
+            to: deployer.address,
+        });
+        expect((await blockchain.getContract(cart.address)).accountState?.type).toEqual('uninit');
         for (let i = 0; i < 100; i++) {
             expect(await items[i].getOwner()).toEqualAddress(deployer.address);
         }
@@ -144,8 +159,55 @@ describe('Cart', () => {
             success: true,
             outMessagesCount: 255,
         });
+        expect(result.transactions).toHaveTransaction({
+            from: cart.address,
+            to: deployer.address,
+        });
+        expect((await blockchain.getContract(cart.address)).accountState?.type).toEqual('uninit');
         for (let i = 0; i < 255; i++) {
             expect(await items[i].getOwner()).toEqualAddress(deployer.address);
+        }
+    });
+
+    it('should purchase 50 nfts with 50 failed', async () => {
+        const randomWallet = await blockchain.treasury('randomWallet');
+        for (let i = 1; i < 100; i += 2) {
+            await randomWallet.send({
+                to: sales[i].address,
+                value: toNano('1.1') + toNano('0.1') * BigInt(i + 1),
+            });
+        }
+
+        let dict = Dictionary.empty(Dictionary.Keys.Address(), Dictionary.Values.BigVarUint(4));
+        for (let i = 0; i < 100; i++) {
+            dict.set(sales[i].address, toNano('1.1') + toNano('0.1') * BigInt(i + 1));
+        }
+        const cart = blockchain.openContract(
+            Cart.createFromConfig({ ownerAddress: deployer.address, nfts: dict }, code)
+        );
+        const result = await cart.sendBuy(deployer.getSender(), toNano('10000'), { queryId: 0n });
+        expect(result.transactions).toHaveTransaction({
+            on: cart.address,
+            success: true,
+            outMessagesCount: 100,
+        });
+        const count = result.transactions.reduce(
+            (acc, curr) =>
+                curr.inMessage?.info.type == 'internal' &&
+                cart.address.equals(curr.inMessage?.info.src) &&
+                deployer.address.equals(curr.inMessage?.info.dest)
+                    ? acc + 1
+                    : acc,
+            0
+        );
+        expect(count).toEqual(51);
+        expect((await blockchain.getContract(cart.address)).accountState?.type).toEqual('uninit');
+        for (let i = 0; i < 100; i++) {
+            if (i % 2 == 0) {
+                expect(await items[i].getOwner()).toEqualAddress(deployer.address);
+            } else {
+                expect(await items[i].getOwner()).toEqualAddress(randomWallet.address);
+            }
         }
     });
 });

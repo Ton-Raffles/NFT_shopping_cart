@@ -20,7 +20,7 @@ export const Opcodes = {
 };
 
 export function cartConfigToCell(config: CartConfig): Cell {
-    return beginCell().storeDict(config.nfts).storeAddress(config.ownerAddress).endCell();
+    return beginCell().storeDict(config.nfts).storeAddress(config.ownerAddress).storeUint(0, 8).endCell();
 }
 
 export class Cart implements Contract {
