@@ -80,14 +80,22 @@ describe('Cart', () => {
     it('should purchase 1 nft', async () => {
         let dict = Dictionary.empty(Dictionary.Keys.Address(), Dictionary.Values.BigVarUint(4));
         dict.set(sales[0].address, toNano('1.2'));
+        let total_value = toNano('1.2');
         const cart = blockchain.openContract(
             Cart.createFromConfig({ ownerAddress: deployer.address, nfts: dict }, code)
         );
         const result = await cart.sendBuy(deployer.getSender(), toNano('1.25'), { queryId: 0n });
         expect(result.transactions).toHaveTransaction({
+            from: cart.address,
+            to: deployer.address,
+            value: (x: bigint | undefined) =>
+                x ? x <= toNano('10000') - total_value && x >= toNano('1.25') - total_value - toNano('0.1') : false,
+            op: 0x7b,
+        });
+        expect(result.transactions).toHaveTransaction({
             on: cart.address,
             success: true,
-            outMessagesCount: 1,
+            outMessagesCount: 2,
         });
         expect(result.transactions).toHaveTransaction({
             from: cart.address,
@@ -99,17 +107,26 @@ describe('Cart', () => {
 
     it('should purchase 10 nfts', async () => {
         let dict = Dictionary.empty(Dictionary.Keys.Address(), Dictionary.Values.BigVarUint(4));
+        let total_value = 0n;
         for (let i = 0; i < 10; i++) {
             dict.set(sales[i].address, toNano('1.1') + toNano('0.1') * BigInt(i + 1));
+            total_value += toNano('1.1') + toNano('0.1') * BigInt(i + 1);
         }
         const cart = blockchain.openContract(
             Cart.createFromConfig({ ownerAddress: deployer.address, nfts: dict }, code)
         );
         const result = await cart.sendBuy(deployer.getSender(), toNano('10000'), { queryId: 0n });
         expect(result.transactions).toHaveTransaction({
+            from: cart.address,
+            to: deployer.address,
+            value: (x: bigint | undefined) =>
+                x ? x <= toNano('10000') - total_value && x >= toNano('10000') - total_value - toNano('0.1') : false,
+            op: 0x7b,
+        });
+        expect(result.transactions).toHaveTransaction({
             on: cart.address,
             success: true,
-            outMessagesCount: 10,
+            outMessagesCount: 11,
         });
         expect(result.transactions).toHaveTransaction({
             from: cart.address,
@@ -123,17 +140,26 @@ describe('Cart', () => {
 
     it('should purchase 100 nfts', async () => {
         let dict = Dictionary.empty(Dictionary.Keys.Address(), Dictionary.Values.BigVarUint(4));
+        let total_value = 0n;
         for (let i = 0; i < 100; i++) {
             dict.set(sales[i].address, toNano('1.1') + toNano('0.1') * BigInt(i + 1));
+            total_value += toNano('1.1') + toNano('0.1') * BigInt(i + 1);
         }
         const cart = blockchain.openContract(
             Cart.createFromConfig({ ownerAddress: deployer.address, nfts: dict }, code)
         );
         const result = await cart.sendBuy(deployer.getSender(), toNano('10000'), { queryId: 0n });
         expect(result.transactions).toHaveTransaction({
+            from: cart.address,
+            to: deployer.address,
+            value: (x: bigint | undefined) =>
+                x ? x <= toNano('10000') - total_value && x >= toNano('10000') - total_value - toNano('0.5') : false,
+            op: 0x7b,
+        });
+        expect(result.transactions).toHaveTransaction({
             on: cart.address,
             success: true,
-            outMessagesCount: 100,
+            outMessagesCount: 101,
         });
         expect(result.transactions).toHaveTransaction({
             from: cart.address,
@@ -145,26 +171,36 @@ describe('Cart', () => {
         }
     });
 
-    it('should purchase 255 nfts', async () => {
+    it('should purchase 253 nfts', async () => {
         let dict = Dictionary.empty(Dictionary.Keys.Address(), Dictionary.Values.BigVarUint(4));
-        for (let i = 0; i < 255; i++) {
+        let total_value = 0n;
+        for (let i = 0; i < 253; i++) {
             dict.set(sales[i].address, toNano('1.1') + toNano('0.1') * BigInt(i + 1));
+            total_value += toNano('1.1') + toNano('0.1') * BigInt(i + 1);
         }
         const cart = blockchain.openContract(
             Cart.createFromConfig({ ownerAddress: deployer.address, nfts: dict }, code)
         );
         const result = await cart.sendBuy(deployer.getSender(), toNano('10000'), { queryId: 0n });
         expect(result.transactions).toHaveTransaction({
+            from: cart.address,
+            to: deployer.address,
+            value: (x: bigint | undefined) =>
+                x ? x <= toNano('10000') - total_value && x >= toNano('10000') - total_value - toNano('1') : false,
+            op: 0x7b,
+        });
+        expect(result.transactions).toHaveTransaction({
             on: cart.address,
             success: true,
-            outMessagesCount: 255,
+            outMessagesCount: 254,
         });
         expect(result.transactions).toHaveTransaction({
             from: cart.address,
             to: deployer.address,
         });
+
         expect((await blockchain.getContract(cart.address)).accountState?.type).toEqual('uninit');
-        for (let i = 0; i < 255; i++) {
+        for (let i = 0; i < 253; i++) {
             expect(await items[i].getOwner()).toEqualAddress(deployer.address);
         }
     });
@@ -189,7 +225,7 @@ describe('Cart', () => {
         expect(result.transactions).toHaveTransaction({
             on: cart.address,
             success: true,
-            outMessagesCount: 100,
+            outMessagesCount: 101,
         });
         const count = result.transactions.reduce(
             (acc, curr) =>
@@ -200,7 +236,7 @@ describe('Cart', () => {
                     : acc,
             0
         );
-        expect(count).toEqual(51);
+        expect(count).toEqual(52);
         expect((await blockchain.getContract(cart.address)).accountState?.type).toEqual('uninit');
         for (let i = 0; i < 100; i++) {
             if (i % 2 == 0) {

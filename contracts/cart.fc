@@ -55,6 +55,16 @@ global slice context::sender;
 
             (key, val, flag) = data::nfts.dict_get_next?(267, key);
         }
+
+        raw_reserve(10000000, 2);
+
+        send_raw_message(begin_cell()
+                .store_uint(0x18, 6)
+                .store_slice(data::owner_address)
+                .store_coins(0)
+                .store_uint(0, 107)
+                .store_uint(123, 32)
+            .end_cell(), 128);
     }
     
     elseif (context::op == op::ownership_assigned) {
