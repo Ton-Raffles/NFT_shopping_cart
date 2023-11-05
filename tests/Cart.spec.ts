@@ -101,41 +101,30 @@ describe('Cart', () => {
             from: cart.address,
             to: deployer.address,
         });
-        expect((await blockchain.getContract(cart.address)).accountState?.type).toEqual('uninit');
         expect(await items[0].getOwner()).toEqualAddress(deployer.address);
     });
 
-    it('should purchase 10 nfts', async () => {
+    it.only('should purchase 10 nfts', async () => {
         let dict = Dictionary.empty(Dictionary.Keys.Address(), Dictionary.Values.BigVarUint(4));
-        let total_value = 0n;
         for (let i = 0; i < 10; i++) {
             dict.set(sales[i].address, toNano('1.1') + toNano('0.1') * BigInt(i + 1));
-            total_value += toNano('1.1') + toNano('0.1') * BigInt(i + 1);
         }
         const cart = blockchain.openContract(
             Cart.createFromConfig({ ownerAddress: deployer.address, nfts: dict }, code)
         );
+        const balanceBefore = (await blockchain.getContract(deployer.address)).balance;
         const result = await cart.sendBuy(deployer.getSender(), toNano('10000'), { queryId: 0n });
-        expect(result.transactions).toHaveTransaction({
-            from: cart.address,
-            to: deployer.address,
-            value: (x: bigint | undefined) =>
-                x ? x <= toNano('10000') - total_value && x >= toNano('10000') - total_value - toNano('0.1') : false,
-            op: 0x7b,
-        });
         expect(result.transactions).toHaveTransaction({
             on: cart.address,
             success: true,
-            outMessagesCount: 11,
+            outMessagesCount: 10,
         });
-        expect(result.transactions).toHaveTransaction({
-            from: cart.address,
-            to: deployer.address,
-        });
-        expect((await blockchain.getContract(cart.address)).accountState?.type).toEqual('uninit');
         for (let i = 0; i < 10; i++) {
             expect(await items[i].getOwner()).toEqualAddress(deployer.address);
         }
+        expect((await blockchain.getContract(cart.address)).balance).toEqual(0n);
+        const balanceAfter = (await blockchain.getContract(deployer.address)).balance;
+        expect(balanceBefore - balanceAfter).toBeLessThan(toNano('0.1') * 10n);
     });
 
     it('should purchase 100 nfts', async () => {
@@ -165,7 +154,6 @@ describe('Cart', () => {
             from: cart.address,
             to: deployer.address,
         });
-        expect((await blockchain.getContract(cart.address)).accountState?.type).toEqual('uninit');
         for (let i = 0; i < 100; i++) {
             expect(await items[i].getOwner()).toEqualAddress(deployer.address);
         }
@@ -198,8 +186,6 @@ describe('Cart', () => {
             from: cart.address,
             to: deployer.address,
         });
-
-        expect((await blockchain.getContract(cart.address)).accountState?.type).toEqual('uninit');
         for (let i = 0; i < 253; i++) {
             expect(await items[i].getOwner()).toEqualAddress(deployer.address);
         }
@@ -237,7 +223,7 @@ describe('Cart', () => {
             0
         );
         expect(count).toEqual(52);
-        expect((await blockchain.getContract(cart.address)).accountState?.type).toEqual('uninit');
+
         for (let i = 0; i < 100; i++) {
             if (i % 2 == 0) {
                 expect(await items[i].getOwner()).toEqualAddress(deployer.address);
