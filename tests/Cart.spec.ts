@@ -84,27 +84,24 @@ describe('Cart', () => {
         const cart = blockchain.openContract(
             Cart.createFromConfig({ ownerAddress: deployer.address, nfts: dict }, code)
         );
+        const balanceBefore = (await blockchain.getContract(deployer.address)).balance;
         const result = await cart.sendBuy(deployer.getSender(), toNano('1.25'), { queryId: 0n });
-        expect(result.transactions).toHaveTransaction({
-            from: cart.address,
-            to: deployer.address,
-            value: (x: bigint | undefined) =>
-                x ? x <= toNano('10000') - total_value && x >= toNano('1.25') - total_value - toNano('0.1') : false,
-            op: 0x7b,
-        });
         expect(result.transactions).toHaveTransaction({
             on: cart.address,
             success: true,
-            outMessagesCount: 2,
+            outMessagesCount: 1,
         });
         expect(result.transactions).toHaveTransaction({
             from: cart.address,
             to: deployer.address,
         });
         expect(await items[0].getOwner()).toEqualAddress(deployer.address);
+        expect((await blockchain.getContract(cart.address)).balance).toEqual(0n);
+        const balanceAfter = (await blockchain.getContract(deployer.address)).balance;
+        expect(balanceBefore - balanceAfter).toBeLessThan(toNano('0.1'));
     });
 
-    it.only('should purchase 10 nfts', async () => {
+    it('should purchase 10 nfts', async () => {
         let dict = Dictionary.empty(Dictionary.Keys.Address(), Dictionary.Values.BigVarUint(4));
         for (let i = 0; i < 10; i++) {
             dict.set(sales[i].address, toNano('1.1') + toNano('0.1') * BigInt(i + 1));
@@ -137,18 +134,12 @@ describe('Cart', () => {
         const cart = blockchain.openContract(
             Cart.createFromConfig({ ownerAddress: deployer.address, nfts: dict }, code)
         );
+        const balanceBefore = (await blockchain.getContract(deployer.address)).balance;
         const result = await cart.sendBuy(deployer.getSender(), toNano('10000'), { queryId: 0n });
-        expect(result.transactions).toHaveTransaction({
-            from: cart.address,
-            to: deployer.address,
-            value: (x: bigint | undefined) =>
-                x ? x <= toNano('10000') - total_value && x >= toNano('10000') - total_value - toNano('0.5') : false,
-            op: 0x7b,
-        });
         expect(result.transactions).toHaveTransaction({
             on: cart.address,
             success: true,
-            outMessagesCount: 101,
+            outMessagesCount: 100,
         });
         expect(result.transactions).toHaveTransaction({
             from: cart.address,
@@ -157,30 +148,27 @@ describe('Cart', () => {
         for (let i = 0; i < 100; i++) {
             expect(await items[i].getOwner()).toEqualAddress(deployer.address);
         }
+        expect((await blockchain.getContract(cart.address)).balance).toEqual(0n);
+        const balanceAfter = (await blockchain.getContract(deployer.address)).balance;
+        expect(balanceBefore - balanceAfter).toBeLessThan(toNano('0.1') * 100n);
     });
 
-    it('should purchase 253 nfts', async () => {
+    it('should purchase 255 nfts', async () => {
         let dict = Dictionary.empty(Dictionary.Keys.Address(), Dictionary.Values.BigVarUint(4));
         let total_value = 0n;
-        for (let i = 0; i < 253; i++) {
+        for (let i = 0; i < 255; i++) {
             dict.set(sales[i].address, toNano('1.1') + toNano('0.1') * BigInt(i + 1));
             total_value += toNano('1.1') + toNano('0.1') * BigInt(i + 1);
         }
         const cart = blockchain.openContract(
             Cart.createFromConfig({ ownerAddress: deployer.address, nfts: dict }, code)
         );
+        const balanceBefore = (await blockchain.getContract(deployer.address)).balance;
         const result = await cart.sendBuy(deployer.getSender(), toNano('10000'), { queryId: 0n });
-        expect(result.transactions).toHaveTransaction({
-            from: cart.address,
-            to: deployer.address,
-            value: (x: bigint | undefined) =>
-                x ? x <= toNano('10000') - total_value && x >= toNano('10000') - total_value - toNano('1') : false,
-            op: 0x7b,
-        });
         expect(result.transactions).toHaveTransaction({
             on: cart.address,
             success: true,
-            outMessagesCount: 254,
+            outMessagesCount: 255,
         });
         expect(result.transactions).toHaveTransaction({
             from: cart.address,
@@ -189,6 +177,9 @@ describe('Cart', () => {
         for (let i = 0; i < 253; i++) {
             expect(await items[i].getOwner()).toEqualAddress(deployer.address);
         }
+        expect((await blockchain.getContract(cart.address)).balance).toEqual(0n);
+        const balanceAfter = (await blockchain.getContract(deployer.address)).balance;
+        expect(balanceBefore - balanceAfter).toBeLessThan(toNano('0.1') * 253n);
     });
 
     it('should purchase 50 nfts with 50 failed', async () => {
@@ -207,11 +198,12 @@ describe('Cart', () => {
         const cart = blockchain.openContract(
             Cart.createFromConfig({ ownerAddress: deployer.address, nfts: dict }, code)
         );
+        const balanceBefore = (await blockchain.getContract(deployer.address)).balance;
         const result = await cart.sendBuy(deployer.getSender(), toNano('10000'), { queryId: 0n });
         expect(result.transactions).toHaveTransaction({
             on: cart.address,
             success: true,
-            outMessagesCount: 101,
+            outMessagesCount: 100,
         });
         const count = result.transactions.reduce(
             (acc, curr) =>
@@ -222,7 +214,7 @@ describe('Cart', () => {
                     : acc,
             0
         );
-        expect(count).toEqual(52);
+        expect(count).toEqual(100);
 
         for (let i = 0; i < 100; i++) {
             if (i % 2 == 0) {
