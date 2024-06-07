@@ -1,4 +1,4 @@
-# NFTshoppingcart
+# NFT_shopping_cart
 
 ## Project structure
 
